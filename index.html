@@ -1,0 +1,1332 @@
+ · HTML
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Supernova – Cronograma de Implantação | Santa Luzia</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+ 
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+ 
+<style>
+  :root {
+    --bg:       #0b0f1a;
+    --surface:  #111827;
+    --card:     #161d2e;
+    --border:   #1e2d45;
+    --accent:   #2563eb;
+    --accent2:  #0ea5e9;
+    --gold:     #f59e0b;
+    --green:    #10b981;
+    --red:      #ef4444;
+    --orange:   #f97316;
+    --text:     #e2e8f0;
+    --muted:    #64748b;
+    --radius:   12px;
+  }
+ 
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+ 
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+ 
+  /* ── SIDEBAR ── */
+  .sidebar {
+    position: fixed; top: 0; left: 0;
+    width: 240px; height: 100vh;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    z-index: 100;
+    padding: 0 0 24px;
+  }
+ 
+  .sidebar-logo {
+    padding: 28px 24px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-logo h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px; font-weight: 800;
+    background: linear-gradient(135deg, #2563eb, #0ea5e9);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    letter-spacing: -0.5px;
+  }
+  .sidebar-logo p { font-size: 11px; color: var(--muted); margin-top: 4px; }
+ 
+  .sidebar-nav { flex: 1; padding: 16px 12px; overflow-y: auto; }
+ 
+  .nav-section-label {
+    font-size: 10px; font-weight: 600; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--muted);
+    padding: 12px 12px 6px;
+  }
+ 
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 8px;
+    cursor: pointer; font-size: 13.5px; font-weight: 500;
+    color: var(--muted); transition: all 0.18s;
+    border: none; background: none; width: 100%; text-align: left;
+  }
+  .nav-item:hover { background: var(--card); color: var(--text); }
+  .nav-item.active {
+    background: rgba(37,99,235,0.15);
+    color: #60a5fa;
+    border-left: 3px solid var(--accent);
+    padding-left: 9px;
+  }
+  .nav-item .icon { font-size: 16px; width: 22px; text-align: center; }
+ 
+  .sidebar-footer {
+    padding: 16px 24px 0;
+    border-top: 1px solid var(--border);
+    font-size: 11px; color: var(--muted);
+  }
+  .connection-dot {
+    display: inline-block; width: 7px; height: 7px;
+    border-radius: 50%; background: var(--green);
+    margin-right: 6px; animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+ 
+  /* ── MAIN ── */
+  .main {
+    margin-left: 240px;
+    min-height: 100vh;
+  }
+ 
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(11,15,26,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 32px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .topbar-title {
+    font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 700;
+  }
+  .topbar-actions { display: flex; gap: 10px; }
+ 
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: 8px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: all 0.18s; border: none; font-family: inherit;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #1d4ed8; transform: translateY(-1px); }
+  .btn-ghost { background: var(--card); color: var(--muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { color: var(--text); border-color: var(--accent); }
+  .btn-success { background: var(--green); color: #fff; }
+  .btn-success:hover { background: #059669; }
+  .btn-danger { background: var(--red); color: #fff; }
+  .btn-danger:hover { background: #dc2626; }
+  .btn-sm { padding: 5px 11px; font-size: 12px; }
+ 
+  .content { padding: 28px 32px; }
+ 
+  /* ── VIEWS ── */
+  .view { display: none; }
+  .view.active { display: block; }
+ 
+  /* ── CARDS & STATS ── */
+  .stats-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px; margin-bottom: 28px;
+  }
+  .stat-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+    position: relative; overflow: hidden;
+  }
+  .stat-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  }
+  .stat-card.blue::before  { background: linear-gradient(90deg, #2563eb, #0ea5e9); }
+  .stat-card.green::before { background: linear-gradient(90deg, #10b981, #34d399); }
+  .stat-card.gold::before  { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+  .stat-card.red::before   { background: linear-gradient(90deg, #ef4444, #f97316); }
+  .stat-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+  .stat-value { font-family: 'Syne', sans-serif; font-size: 34px; font-weight: 800; margin-top: 8px; }
+  .stat-sub   { font-size: 12px; color: var(--muted); margin-top: 4px; }
+ 
+  /* ── PROGRESS BAR ── */
+  .progress-wrap { margin: 20px 0; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+  .progress-bar { height: 8px; border-radius: 99px; background: var(--border); overflow: hidden; }
+  .progress-fill {
+    height: 100%; border-radius: 99px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 0.5s ease;
+  }
+ 
+  /* ── TABLE ── */
+  .table-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+  }
+  .table-header {
+    padding: 16px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+  .table-header h3 { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; }
+ 
+  table { width: 100%; border-collapse: collapse; }
+  thead tr { background: rgba(255,255,255,0.03); }
+  th {
+    padding: 11px 16px; text-align: left;
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .7px; color: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 12px 16px; font-size: 13.5px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+ 
+  /* ── BADGES ── */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 99px;
+    font-size: 11px; font-weight: 600; white-space: nowrap;
+  }
+  .badge-green  { background: rgba(16,185,129,.15); color: #34d399; }
+  .badge-blue   { background: rgba(37,99,235,.15);  color: #60a5fa; }
+  .badge-gold   { background: rgba(245,158,11,.15); color: #fbbf24; }
+  .badge-red    { background: rgba(239,68,68,.15);  color: #f87171; }
+  .badge-gray   { background: rgba(100,116,139,.15);color: #94a3b8; }
+  .badge-orange { background: rgba(249,115,22,.15); color: #fb923c; }
+ 
+  /* ── MODAL ── */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,.65); backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px; opacity: 0; pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 28px;
+    width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto;
+    transform: translateY(20px); transition: transform 0.2s;
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .modal-title {
+    font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700;
+    margin-bottom: 20px; display: flex; align-items: center; gap: 8px;
+  }
+ 
+  /* ── FORM ── */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-full { grid-column: 1 / -1; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  input, select, textarea {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px;
+    color: var(--text); font-family: inherit; font-size: 14px;
+    transition: border-color 0.15s; outline: none; width: 100%;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 80px; }
+  select option { background: var(--surface); }
+ 
+  .modal-actions {
+    display: flex; gap: 10px; justify-content: flex-end;
+    margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border);
+  }
+ 
+  /* ── TOAST ── */
+  .toast-container {
+    position: fixed; bottom: 24px; right: 24px; z-index: 999;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .toast {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 18px;
+    font-size: 13.5px; font-weight: 500;
+    display: flex; align-items: center; gap: 10px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.4);
+    animation: slideIn .25s ease; min-width: 240px;
+  }
+  .toast.success { border-left: 3px solid var(--green); }
+  .toast.error   { border-left: 3px solid var(--red);   }
+  .toast.info    { border-left: 3px solid var(--accent); }
+  @keyframes slideIn { from{transform:translateX(40px);opacity:0} to{transform:translateX(0);opacity:1} }
+ 
+  /* ── GANTT (simplified) ── */
+  .gantt-container { overflow-x: auto; }
+  .gantt-row {
+    display: flex; align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    min-height: 42px;
+  }
+  .gantt-label { width: 280px; min-width: 280px; padding: 8px 16px; font-size: 12.5px; }
+  .gantt-track { flex: 1; position: relative; height: 28px; background: rgba(255,255,255,.02); border-radius: 4px; }
+  .gantt-bar {
+    position: absolute; height: 20px; top: 4px;
+    border-radius: 4px; display: flex; align-items: center;
+    padding: 0 8px; font-size: 11px; color: #fff; font-weight: 600;
+    transition: all .3s;
+  }
+ 
+  /* ── SECTION DIVIDER ── */
+  .section-org {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; background: rgba(37,99,235,.08);
+    border-bottom: 1px solid var(--border);
+    font-weight: 700; font-size: 13px; color: #60a5fa;
+  }
+ 
+  /* ── LOADING ── */
+  .loading {
+    display: flex; align-items: center; justify-content: center;
+    padding: 60px; color: var(--muted);
+    flex-direction: column; gap: 12px;
+  }
+  .spinner {
+    width: 32px; height: 32px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+ 
+  /* ── FIREBASE CONFIG NOTICE ── */
+  .config-notice {
+    background: rgba(245,158,11,.08);
+    border: 1px solid rgba(245,158,11,.3);
+    border-radius: 10px; padding: 16px 20px;
+    margin-bottom: 24px; font-size: 13px;
+  }
+  .config-notice strong { color: var(--gold); }
+  .config-notice code {
+    background: rgba(0,0,0,.4); padding: 2px 6px; border-radius: 4px;
+    font-family: monospace; font-size: 12px;
+  }
+ 
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    .sidebar { width: 60px; }
+    .sidebar-logo, .sidebar-footer, .nav-section-label, .nav-item span { display: none; }
+    .nav-item { justify-content: center; padding: 12px; }
+    .main { margin-left: 60px; }
+    .content { padding: 20px 16px; }
+    .form-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+ 
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <h1>⚡ SUPERNOVA</h1>
+    <p>Cronograma de Implantação</p>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Dashboard</div>
+    <button class="nav-item active" onclick="showView('dashboard')" data-view="dashboard">
+      <span class="icon">🏠</span><span>Visão Geral</span>
+    </button>
+    <button class="nav-item" onclick="showView('cronograma')" data-view="cronograma">
+      <span class="icon">📅</span><span>Cronograma Geral</span>
+    </button>
+ 
+    <div class="nav-section-label">Gestão</div>
+    <button class="nav-item" onclick="showView('atividades')" data-view="atividades">
+      <span class="icon">✅</span><span>Controle Atividades</span>
+    </button>
+    <button class="nav-item" onclick="showView('sistemas')" data-view="sistemas">
+      <span class="icon">🖥️</span><span>Sistemas por Órgão</span>
+    </button>
+    <button class="nav-item" onclick="showView('migracao')" data-view="migracao">
+      <span class="icon">🗄️</span><span>Migração de Dados</span>
+    </button>
+ 
+    <div class="nav-section-label">Operacional</div>
+    <button class="nav-item" onclick="showView('kickoff')" data-view="kickoff">
+      <span class="icon">🚀</span><span>Reunião Kickoff</span>
+    </button>
+    <button class="nav-item" onclick="showView('sla')" data-view="sla">
+      <span class="icon">🛡️</span><span>Suporte & SLA</span>
+    </button>
+    <button class="nav-item" onclick="showView('config')" data-view="config">
+      <span class="icon">⚙️</span><span>Configurações</span>
+    </button>
+  </nav>
+  <div class="sidebar-footer">
+    <span class="connection-dot" id="connDot"></span>
+    <span id="connStatus">Conectando...</span>
+  </div>
+</aside>
+ 
+<!-- MAIN -->
+<main class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="topbarTitle">🏠 Visão Geral</div>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost" onclick="exportData()">📥 Exportar JSON</button>
+      <button class="btn btn-primary" id="btnAdd" onclick="openAddModal()" style="display:none">+ Adicionar</button>
+    </div>
+  </div>
+ 
+  <div class="content">
+ 
+    <!-- ══ DASHBOARD ══ -->
+    <div class="view active" id="view-dashboard">
+      <div id="configAlert" class="config-notice" style="display:none">
+        ⚠️ <strong>Configure o Firebase:</strong> Vá em <strong>Configurações</strong> e insira as credenciais do seu projeto Firebase para ativar o banco de dados em tempo real.
+      </div>
+ 
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-card blue">
+          <div class="stat-label">Total Atividades</div>
+          <div class="stat-value" id="statTotal">—</div>
+          <div class="stat-sub">Cronograma geral</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-label">Concluídas</div>
+          <div class="stat-value" id="statDone">—</div>
+          <div class="stat-sub" id="statDonePct">—% do total</div>
+        </div>
+        <div class="stat-card gold">
+          <div class="stat-label">Em Andamento</div>
+          <div class="stat-value" id="statProgress">—</div>
+          <div class="stat-sub">Atividades ativas</div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-label">Não Iniciadas</div>
+          <div class="stat-value" id="statPending">—</div>
+          <div class="stat-sub">Aguardando início</div>
+        </div>
+      </div>
+ 
+      <div class="progress-wrap" style="margin-bottom:28px">
+        <div class="progress-label">
+          <span>Progresso Geral do Projeto</span>
+          <strong id="progressPct">0%</strong>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      </div>
+ 
+      <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
+        <div class="stat-card blue" style="padding:14px 18px">
+          <div class="stat-label">Sistemas Total</div>
+          <div class="stat-value" id="statSys">—</div>
+        </div>
+        <div class="stat-card green" style="padding:14px 18px">
+          <div class="stat-label">Go-Live</div>
+          <div class="stat-value" id="statGoLive">—</div>
+        </div>
+        <div class="stat-card gold" style="padding:14px 18px">
+          <div class="stat-label">Migração</div>
+          <div class="stat-value" id="statMig">—</div>
+        </div>
+      </div>
+ 
+      <div class="table-card" style="margin-top:28px">
+        <div class="table-header">
+          <h3>📊 Resumo das Etapas</h3>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Etapa</th><th>Descrição</th><th>Duração</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>1ª Etapa</td><td>Planejamento Inicial e Kickoff</td><td>Até 2 semanas</td><td><span class="badge badge-gold">▶ Em andamento</span></td></tr>
+            <tr><td>2ª Etapa</td><td>Implantação do Software</td><td>120 dias</td><td><span class="badge badge-gray">⏳ A Realizar</span></td></tr>
+            <tr><td>3ª Etapa</td><td>Treinamento dos Usuários</td><td>45 dias</td><td><span class="badge badge-gray">⏳ A Realizar</span></td></tr>
+            <tr><td>4ª Etapa</td><td>Migração e Validação de Dados</td><td>45–60 dias</td><td><span class="badge badge-gray">⏳ A Realizar</span></td></tr>
+            <tr><td>5ª Etapa</td><td>Testes, Homologação e Ajustes</td><td>30 dias</td><td><span class="badge badge-gray">⏳ A Realizar</span></td></tr>
+            <tr><td>6ª Etapa</td><td>Entrada em Produção (Go-Live)</td><td>30 + 180 dias</td><td><span class="badge badge-gray">⏳ A Realizar</span></td></tr>
+            <tr><td>7ª Etapa</td><td>Avaliação do Projeto e Feedback</td><td>Até 2 semanas</td><td><span class="badge badge-gray">⏳ A Realizar</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+ 
+    <!-- ══ CRONOGRAMA GERAL ══ -->
+    <div class="view" id="view-cronograma">
+      <div class="table-card">
+        <div class="table-header">
+          <h3>📅 Cronograma Geral de Implantação</h3>
+          <button class="btn btn-primary btn-sm" onclick="openAddModal('cronograma')">+ Nova Atividade</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>Etapa</th><th>Atividade</th><th>Responsável</th>
+              <th>Duração</th><th>Início</th><th>Fim</th><th>Status</th><th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="cronogramaBody"><tr><td colspan="9"><div class="loading"><div class="spinner"></div>Carregando...</div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+ 
+    <!-- ══ CONTROLE ATIVIDADES ══ -->
+    <div class="view" id="view-atividades">
+      <div class="table-card">
+        <div class="table-header">
+          <h3>✅ Controle de Atividades</h3>
+          <button class="btn btn-primary btn-sm" onclick="openAddModal('atividades')">+ Nova Atividade</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>Etapa</th><th>Atividade</th><th>Responsável</th>
+              <th>Início Real</th><th>Fim Real</th><th>% Concluído</th><th>Status</th><th>Obs.</th><th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="atividadesBody"><tr><td colspan="10"><div class="loading"><div class="spinner"></div>Carregando...</div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+ 
+    <!-- ══ SISTEMAS POR ÓRGÃO ══ -->
+    <div class="view" id="view-sistemas">
+      <div class="table-card">
+        <div class="table-header">
+          <h3>🖥️ Sistemas por Órgão</h3>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>Órgão</th><th>Sistema / Módulo</th><th>Instalação</th>
+              <th>Migração</th><th>Homologação</th><th>Go-Live</th><th>Status</th><th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="sistemasBody"><tr><td colspan="9"><div class="loading"><div class="spinner"></div>Carregando...</div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+ 
+    <!-- ══ MIGRAÇÃO ══ -->
+    <div class="view" id="view-migracao">
+      <div class="table-card">
+        <div class="table-header">
+          <h3>🗄️ Plano de Migração de Dados</h3>
+          <button class="btn btn-primary btn-sm" onclick="openAddModal('migracao')">+ Nova Atividade</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>Fase</th><th>Atividade</th><th>Início</th><th>Fim</th>
+              <th>Responsável</th><th>Status</th><th>Obs.</th><th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="migracaoBody"><tr><td colspan="9"><div class="loading"><div class="spinner"></div>Carregando...</div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+ 
+    <!-- ══ KICKOFF ══ -->
+    <div class="view" id="view-kickoff">
+      <div class="table-card" style="margin-bottom:20px">
+        <div class="table-header"><h3>📋 Dados da Reunião de Kickoff</h3></div>
+        <div style="padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:16px" id="kickoffInfo">
+          <div class="loading" style="grid-column:1/-1"><div class="spinner"></div>Carregando...</div>
+        </div>
+      </div>
+      <div class="table-card">
+        <div class="table-header"><h3>📌 Pauta / Ata da Reunião</h3></div>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>Tópico</th><th>Responsável</th><th>Duração</th>
+              <th>Decisão/Resultado</th><th>Pendência</th><th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="kickoffBody"><tr><td colspan="7"><div class="loading"><div class="spinner"></div>Carregando...</div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+ 
+    <!-- ══ SLA ══ -->
+    <div class="view" id="view-sla">
+      <div class="table-card">
+        <div class="table-header"><h3>🛡️ Matriz de Suporte e SLA</h3></div>
+        <table>
+          <thead>
+            <tr><th>Prioridade</th><th>Descrição</th><th>Situação</th><th>Resposta</th><th>Solução</th><th>Obs.</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="badge badge-red">P1 – Crítico</span></td>
+              <td>Parada total do sistema</td><td>Sistema completamente indisponível</td>
+              <td><strong>2 horas</strong></td><td><strong>4 horas</strong></td>
+              <td>Acionar imediatamente o gestor</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-orange">P2 – Alto</span></td>
+              <td>Comprometimento do sistema</td><td>Funcionalidade crítica comprometida</td>
+              <td><strong>4 horas</strong></td><td><strong>10 horas</strong></td>
+              <td>Acompanhamento contínuo</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-gold">P3 – Médio</span></td>
+              <td>Erro funcional</td><td>Erro em funcionalidade específica</td>
+              <td><strong>1 dia útil</strong></td><td><strong>3 dias úteis</strong></td>
+              <td>Registro formal no sistema</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-blue">P4 – Baixo</span></td>
+              <td>Documentação</td><td>Dúvidas e melhorias de documentação</td>
+              <td><strong>2 dias úteis</strong></td><td><strong>6 dias úteis</strong></td>
+              <td>Resposta por e-mail ou portal</td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div class="stat-card blue" style="padding:16px">
+            <div class="stat-label">Técnico Residente</div>
+            <div style="margin-top:8px;font-size:14px">1 técnico alocado em período integral</div>
+          </div>
+          <div class="stat-card gold" style="padding:16px">
+            <div class="stat-label">Jornada</div>
+            <div style="margin-top:8px;font-size:14px">8 horas diárias – segunda a sexta-feira</div>
+          </div>
+          <div class="stat-card green" style="padding:16px">
+            <div class="stat-label">Modalidade</div>
+            <div style="margin-top:8px;font-size:14px">Presencial nas dependências do MUNICÍPIO</div>
+          </div>
+          <div class="stat-card blue" style="padding:16px">
+            <div class="stat-label">Suporte Remoto</div>
+            <div style="margin-top:8px;font-size:14px">Via telefone e atendimento eletrônico</div>
+          </div>
+        </div>
+      </div>
+    </div>
+ 
+    <!-- ══ CONFIGURAÇÕES ══ -->
+    <div class="view" id="view-config">
+      <div class="table-card" style="max-width:640px">
+        <div class="table-header"><h3>⚙️ Configuração do Firebase</h3></div>
+        <div style="padding:24px">
+          <div class="config-notice" style="margin-bottom:24px">
+            <strong>📌 Como configurar:</strong><br><br>
+            1. Acesse <code>console.firebase.google.com</code><br>
+            2. Crie um projeto → Realtime Database → Criar banco de dados (modo teste)<br>
+            3. Vá em Configurações do Projeto → Seus apps → Web → Copie o firebaseConfig<br>
+            4. Cole os valores abaixo e clique em Salvar
+          </div>
+          <div style="display:grid;gap:16px">
+            <div class="form-group">
+              <label>API Key</label>
+              <input type="text" id="cfg_apiKey" placeholder="AIzaSy...">
+            </div>
+            <div class="form-group">
+              <label>Auth Domain</label>
+              <input type="text" id="cfg_authDomain" placeholder="meu-projeto.firebaseapp.com">
+            </div>
+            <div class="form-group">
+              <label>Database URL</label>
+              <input type="text" id="cfg_dbURL" placeholder="https://meu-projeto-default-rtdb.firebaseio.com">
+            </div>
+            <div class="form-group">
+              <label>Project ID</label>
+              <input type="text" id="cfg_projectId" placeholder="meu-projeto">
+            </div>
+            <div class="form-group">
+              <label>App ID</label>
+              <input type="text" id="cfg_appId" placeholder="1:123456789:web:abc...">
+            </div>
+          </div>
+          <div style="margin-top:20px;display:flex;gap:10px">
+            <button class="btn btn-primary" onclick="saveFirebaseConfig()">💾 Salvar Configuração</button>
+            <button class="btn btn-ghost" onclick="loadConfigToForm()">↺ Recarregar</button>
+            <button class="btn btn-success" onclick="initFirebaseAndLoad()">🔗 Testar Conexão</button>
+          </div>
+          <div id="cfgStatus" style="margin-top:16px;font-size:13px"></div>
+        </div>
+      </div>
+ 
+      <div class="table-card" style="max-width:640px;margin-top:20px">
+        <div class="table-header"><h3>🚀 Publicação – GitHub Pages (gratuito)</h3></div>
+        <div style="padding:24px;font-size:13.5px;line-height:1.8">
+          <strong>Passos para publicar gratuitamente:</strong><br><br>
+          <code>1.</code> Crie um repositório no <strong>github.com</strong> (ex: <code>supernova-implantacao</code>)<br>
+          <code>2.</code> Faça upload do arquivo <code>index.html</code> para o repositório<br>
+          <code>3.</code> Vá em <strong>Settings → Pages → Source: main branch / root</strong><br>
+          <code>4.</code> Seu sistema estará em: <code>https://seu-usuario.github.io/supernova-implantacao</code><br><br>
+          <span style="color:var(--green)">✅ Gratuito, sem limite de acessos, HTTPS automático.</span><br>
+          <span style="color:var(--muted)">Alternativa: arraste o arquivo para <strong>tiiny.host</strong> ou <strong>netlify.com/drop</strong></span>
+        </div>
+      </div>
+    </div>
+ 
+  </div><!-- /content -->
+</main>
+ 
+<!-- MODAL EDIT/ADD -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
+  <div class="modal" id="modalContent">
+    <div class="modal-title" id="modalTitle">Editar Registro</div>
+    <div id="modalBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-danger btn-sm" id="btnDelete" onclick="deleteRecord()" style="display:none">🗑️ Excluir</button>
+      <button class="btn btn-primary" onclick="saveRecord()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+ 
+<!-- TOASTS -->
+<div class="toast-container" id="toasts"></div>
+ 
+<script>
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+let db = null;
+let currentView = 'dashboard';
+let editingKey = null;
+let editingCollection = null;
+ 
+const STATUS_OPTS = ['Não Iniciado', 'Iniciado', 'Em Andamento', 'Concluído', 'Cancelado', 'Bloqueado'];
+const STATUS_BADGE = {
+  'Não Iniciado': 'badge-gray',
+  'A Realizar':   'badge-gray',
+  'Iniciado':     'badge-blue',
+  'Em Andamento': 'badge-gold',
+  'Concluído':    'badge-green',
+  'Cancelado':    'badge-red',
+  'Bloqueado':    'badge-red',
+};
+ 
+// ═══════════════════════════════════════════════
+// FIREBASE INIT
+// ═══════════════════════════════════════════════
+function getFirebaseConfig() {
+  try { return JSON.parse(localStorage.getItem('fbConfig') || 'null'); } catch { return null; }
+}
+ 
+function initFirebase(cfg) {
+  try {
+    if (firebase.apps.length) firebase.apps[0].delete();
+    const app = firebase.initializeApp(cfg);
+    db = firebase.database(app);
+    return true;
+  } catch(e) {
+    console.error(e);
+    return false;
+  }
+}
+ 
+function initFirebaseAndLoad() {
+  const cfg = getFirebaseConfig();
+  if (!cfg || !cfg.databaseURL) {
+    setConn(false, 'Sem configuração');
+    document.getElementById('configAlert').style.display = 'block';
+    document.getElementById('cfgStatus').innerHTML = '<span style="color:var(--red)">❌ Nenhuma configuração salva. Preencha os campos acima.</span>';
+    loadLocalData();
+    return;
+  }
+  document.getElementById('configAlert').style.display = 'none';
+  if (initFirebase(cfg)) {
+    setConn(true, 'Firebase conectado');
+    toast('Firebase conectado com sucesso!', 'success');
+    document.getElementById('cfgStatus').innerHTML = '<span style="color:var(--green)">✅ Conectado!</span>';
+    loadAllData();
+  } else {
+    setConn(false, 'Erro de conexão');
+    document.getElementById('cfgStatus').innerHTML = '<span style="color:var(--red)">❌ Erro ao conectar. Verifique as credenciais.</span>';
+    loadLocalData();
+  }
+}
+ 
+function setConn(ok, msg) {
+  const dot = document.getElementById('connDot');
+  const status = document.getElementById('connStatus');
+  dot.style.background = ok ? 'var(--green)' : 'var(--red)';
+  status.textContent = msg;
+}
+ 
+// ═══════════════════════════════════════════════
+// FIREBASE CONFIG FORM
+// ═══════════════════════════════════════════════
+function saveFirebaseConfig() {
+  const cfg = {
+    apiKey: document.getElementById('cfg_apiKey').value.trim(),
+    authDomain: document.getElementById('cfg_authDomain').value.trim(),
+    databaseURL: document.getElementById('cfg_dbURL').value.trim(),
+    projectId: document.getElementById('cfg_projectId').value.trim(),
+    appId: document.getElementById('cfg_appId').value.trim(),
+  };
+  if (!cfg.databaseURL) { toast('Database URL é obrigatória!', 'error'); return; }
+  localStorage.setItem('fbConfig', JSON.stringify(cfg));
+  toast('Configuração salva! Testando conexão...', 'info');
+  initFirebaseAndLoad();
+}
+ 
+function loadConfigToForm() {
+  const cfg = getFirebaseConfig();
+  if (!cfg) return;
+  document.getElementById('cfg_apiKey').value    = cfg.apiKey    || '';
+  document.getElementById('cfg_authDomain').value= cfg.authDomain|| '';
+  document.getElementById('cfg_dbURL').value     = cfg.databaseURL||'';
+  document.getElementById('cfg_projectId').value = cfg.projectId || '';
+  document.getElementById('cfg_appId').value     = cfg.appId     || '';
+}
+ 
+// ═══════════════════════════════════════════════
+// DEFAULT DATA (from Excel)
+// ═══════════════════════════════════════════════
+const DEFAULT_CRONOGRAMA = [
+  {id:'1.1', etapa:'1ª Etapa – Kickoff',         atividade:'Reunião de Kickoff com equipe do cliente',                      responsavel:'Gestor do Projeto',       duracao:1,  inicio:'',fim:'',status:'A Realizar'},
+  {id:'1.2', etapa:'1ª Etapa – Kickoff',         atividade:'Alinhamento de expectativas e definição de responsáveis',       responsavel:'Gestor do Projeto',       duracao:3,  inicio:'',fim:'',status:'A Realizar'},
+  {id:'1.3', etapa:'1ª Etapa – Kickoff',         atividade:'Mapeamento de processos existentes e inventário de dados',      responsavel:'Consultor/Analista',      duracao:5,  inicio:'',fim:'',status:'A Realizar'},
+  {id:'1.4', etapa:'1ª Etapa – Kickoff',         atividade:'Ajuste e aprovação do cronograma definitivo',                  responsavel:'Gestor do Projeto',       duracao:2,  inicio:'',fim:'',status:'A Realizar'},
+  {id:'2.1', etapa:'2ª Etapa – Implantação',     atividade:'Instalação de infraestrutura e ambientes (Dev/Homol/Prod)',    responsavel:'Técnico Residente',       duracao:10, inicio:'',fim:'',status:'A Realizar'},
+  {id:'2.2', etapa:'2ª Etapa – Implantação',     atividade:'Parametrização – Prefeitura: Financeiro e Contabilidade',     responsavel:'Analista de Implantação', duracao:30, inicio:'',fim:'',status:'A Realizar'},
+  {id:'2.3', etapa:'2ª Etapa – Implantação',     atividade:'Parametrização – Prefeitura: RH / Folha / E-Social',         responsavel:'Analista de Implantação', duracao:30, inicio:'',fim:'',status:'A Realizar'},
+  {id:'2.4', etapa:'2ª Etapa – Implantação',     atividade:'Parametrização – Prefeitura: Tributário / Fiscal / Alvará',  responsavel:'Analista de Implantação', duracao:30, inicio:'',fim:'',status:'A Realizar'},
+  {id:'2.5', etapa:'2ª Etapa – Implantação',     atividade:'Parametrização – Prefeitura: Almoxarifado / Patrimônio / Frotas',responsavel:'Analista de Implantação',duracao:20,inicio:'',fim:'',status:'A Realizar'},
+  {id:'2.6', etapa:'2ª Etapa – Implantação',     atividade:'Parametrização – Prefeitura: Contratos / Compras / Obras',   responsavel:'Analista de Implantação', duracao:20, inicio:'',fim:'',status:'A Realizar'},
+  {id:'2.7', etapa:'2ª Etapa – Implantação',     atividade:'Parametrização – Prefeitura: Assistência Social / Protocolo',responsavel:'Analista de Implantação', duracao:15, inicio:'',fim:'',status:'A Realizar'},
+  {id:'2.8', etapa:'2ª Etapa – Implantação',     atividade:'Parametrização – Portais (Transparência / Cidadão / Servidor / BI)',responsavel:'Analista de Implantação',duracao:20,inicio:'',fim:'',status:'A Realizar'},
+  {id:'2.9', etapa:'2ª Etapa – Implantação',     atividade:'Parametrização – Câmara Municipal (todos os sistemas)',      responsavel:'Analista de Implantação', duracao:30, inicio:'',fim:'',status:'A Realizar'},
+  {id:'2.10',etapa:'2ª Etapa – Implantação',     atividade:'Parametrização – IMPAS (todos os sistemas)',                 responsavel:'Analista de Implantação', duracao:30, inicio:'',fim:'',status:'A Realizar'},
+  {id:'2.11',etapa:'2ª Etapa – Implantação',     atividade:'Integração com sistemas externos e APIs',                    responsavel:'Técnico Residente',       duracao:20, inicio:'',fim:'',status:'A Realizar'},
+  {id:'3.1', etapa:'3ª Etapa – Treinamento',     atividade:'Elaboração de plano e material de treinamento',              responsavel:'Analista de Implantação', duracao:10, inicio:'',fim:'',status:'A Realizar'},
+  {id:'3.2', etapa:'3ª Etapa – Treinamento',     atividade:'Treinamento – Módulo Financeiro/Contabilidade (Prefeitura)', responsavel:'Instrutor',               duracao:10, inicio:'',fim:'',status:'A Realizar'},
+  {id:'3.3', etapa:'3ª Etapa – Treinamento',     atividade:'Treinamento – Módulo RH/Folha/E-Social (Prefeitura)',       responsavel:'Instrutor',               duracao:10, inicio:'',fim:'',status:'A Realizar'},
+  {id:'3.4', etapa:'3ª Etapa – Treinamento',     atividade:'Treinamento – Módulo Tributário/Fiscal (Prefeitura)',       responsavel:'Instrutor',               duracao:8,  inicio:'',fim:'',status:'A Realizar'},
+  {id:'3.5', etapa:'3ª Etapa – Treinamento',     atividade:'Treinamento – Módulo Almoxarifado/Patrimônio/Frotas',       responsavel:'Instrutor',               duracao:8,  inicio:'',fim:'',status:'A Realizar'},
+  {id:'3.6', etapa:'3ª Etapa – Treinamento',     atividade:'Treinamento – Módulo Assistência Social / Protocolo',       responsavel:'Instrutor',               duracao:5,  inicio:'',fim:'',status:'A Realizar'},
+  {id:'3.7', etapa:'3ª Etapa – Treinamento',     atividade:'Treinamento – Portais e acesso ao cidadão',                 responsavel:'Instrutor',               duracao:5,  inicio:'',fim:'',status:'A Realizar'},
+  {id:'3.8', etapa:'3ª Etapa – Treinamento',     atividade:'Treinamento – Câmara Municipal',                            responsavel:'Instrutor',               duracao:8,  inicio:'',fim:'',status:'A Realizar'},
+  {id:'3.9', etapa:'3ª Etapa – Treinamento',     atividade:'Treinamento – IMPAS',                                       responsavel:'Instrutor',               duracao:8,  inicio:'',fim:'',status:'A Realizar'},
+  {id:'4.1', etapa:'4ª Etapa – Migração',        atividade:'Diagnóstico e saneamento da base de dados legada',          responsavel:'Analista de Dados',       duracao:15, inicio:'',fim:'',status:'A Realizar'},
+  {id:'4.2', etapa:'4ª Etapa – Migração',        atividade:'Extração e mapeamento de dados – Prefeitura',              responsavel:'Analista de Dados',       duracao:20, inicio:'',fim:'',status:'A Realizar'},
+  {id:'4.3', etapa:'4ª Etapa – Migração',        atividade:'Migração de dados – exercício atual e anteriores',          responsavel:'Analista de Dados',       duracao:30, inicio:'',fim:'',status:'A Realizar'},
+  {id:'4.4', etapa:'4ª Etapa – Migração',        atividade:'Validação de integridade e conferência dos dados migrados', responsavel:'Analista de Dados',       duracao:15, inicio:'',fim:'',status:'A Realizar'},
+  {id:'4.5', etapa:'4ª Etapa – Migração',        atividade:'Migração de dados – Câmara Municipal',                     responsavel:'Analista de Dados',       duracao:15, inicio:'',fim:'',status:'A Realizar'},
+  {id:'4.6', etapa:'4ª Etapa – Migração',        atividade:'Migração de dados – IMPAS',                                responsavel:'Analista de Dados',       duracao:15, inicio:'',fim:'',status:'A Realizar'},
+  {id:'5.1', etapa:'5ª Etapa – Homologação',     atividade:'Testes integrados com usuários chave',                      responsavel:'Analista de Implantação', duracao:15, inicio:'',fim:'',status:'A Realizar'},
+  {id:'5.2', etapa:'5ª Etapa – Homologação',     atividade:'Ajustes e correções pós-teste',                            responsavel:'Analista de Implantação', duracao:10, inicio:'',fim:'',status:'A Realizar'},
+  {id:'5.3', etapa:'5ª Etapa – Homologação',     atividade:'Homologação formal pelo MUNICÍPIO',                        responsavel:'Gestor do Projeto',       duracao:5,  inicio:'',fim:'',status:'A Realizar'},
+  {id:'6.1', etapa:'6ª Etapa – Go-Live',         atividade:'Entrada em produção – sistemas prioritários',              responsavel:'Técnico Residente',       duracao:1,  inicio:'',fim:'',status:'A Realizar'},
+  {id:'6.2', etapa:'6ª Etapa – Go-Live',         atividade:'Acompanhamento pós-implantação (180 dias)',                responsavel:'Técnico Residente',       duracao:180,inicio:'',fim:'',status:'A Realizar'},
+  {id:'7.1', etapa:'7ª Etapa – Avaliação',       atividade:'Reunião de avaliação e coleta de feedback',                responsavel:'Gestor do Projeto',       duracao:1,  inicio:'',fim:'',status:'A Realizar'},
+  {id:'7.2', etapa:'7ª Etapa – Avaliação',       atividade:'Relatório final do projeto',                               responsavel:'Gestor do Projeto',       duracao:5,  inicio:'',fim:'',status:'A Realizar'},
+];
+ 
+const DEFAULT_SISTEMAS = [
+  // PREFEITURA
+  {orgao:'Prefeitura',num:1,  sistema:'Sistema de Planejamento de Governo',                instalacao:'Pendente',migracao:'Pendente',homologacao:'Pendente',golive:'Pendente',status:'Pendente'},
+  {orgao:'Prefeitura',num:2,  sistema:'Sistema de Contabilidade Pública',                  instalacao:'Pendente',migracao:'Pendente',homologacao:'Pendente',golive:'Pendente',status:'Pendente'},
+  {orgao:'Prefeitura',num:3,  sistema:'Sistema de Tesouraria',                              instalacao:'Pendente',migracao:'Pendente',homologacao:'Pendente',golive:'Pendente',status:'Pendente'},
+  {orgao:'Prefeitura',num:4,  sistema:'Sistema de Folha de Pagamento e Recursos Humanos',  instalacao:'Pendente',migracao:'Pendente',homologacao:'Pendente',golive:'Pendente',status:'Pendente'},
+  {orgao:'Prefeitura',num:5,  sistema:'Sistema de Atendimento ao E-Social',                instalacao:'Pendente',migracao:'Pendente',homologacao:'Pendente',golive:'Pendente',status:'Pendente'},
+  {orgao:'Prefeitura',num:6,  sistema:'Sistema de Contratação Pública',                    instalacao:'Pendente',migracao:'Pendente',homologacao:'Pendente',golive:'Pendente',status:'Pendente'},
+  {orgao:'Prefeitura',num:7,  sistema:'Sistema de Gestão de Notas do Fornecedor',          instalacao:'Pendente',migracao:'Pendente',homologacao:'Pendente',golive:'Pendente',status:'Pendente'},
+  {orgao:'Prefeitura',num:8,  sistema:'Sistema de Gestão de Almoxarifado e Estoques',      instalacao:'Pendente',migracao:'Pendente',homologacao:'Pendente',golive:'Pendente',status:'Pendente'},
+  {orgao:'Prefeitura',num:9,  sistema:'Sistema de Gestão de Patrimônio',                   instalacao:'Pendente',migracao:'Pendente',homologacao:'Pendente',golive:'Pendente',status:'Pendente'},
+  {orgao:'Prefeitura',num:10, sistema:'Sistema de Gestão de Frotas',                       instalacao:'Pendente',migracao:'Pendente',homologacao:'Pendente',golive:'Pendente',status:'Pendente'},
+  {orgao:'Prefeitura',num:11, sistema:'Sistema de Gestão Tributária',                      instalacao:'Pendente',migracao:'Pendente',homologacao:'Pendente',golive:'Pendente',status:'Pendente'},
+  {orgao:'Prefeitura',num:12, sistema:'Sistema de Alvará Eletrônico',                      instalacao:'Pendente',migracao:'Pendente',homologacao:'Pendente',golive:'Pendente',status:'Pendente'},
+  {orgao:'Prefeitura',num:13, sistema:'Sistema de Nota Fiscal Eletrônica',                 instalacao:'Pendente',migracao:'Pendente',homologacao:'Pendente',golive:'Pendente',status:'Pendente'},
+  {orgao:'Prefeitura',num:14, sistema:'Sistema de Gestão Fiscal',                          instalacao:'Pendente',migracao:'Pendente',homologacao:'Pendente',golive:'Pendente',status:'Pendente'},
+  {orgao:'Prefeitura',num:15, sistema:'Sistema de Processos e Protocolo',                  instalacao:'Pendente',migracao:'Pendente',homologacao:'Pendente',golive:'Pendente',status:'Pendente'},
+  {orgao:'Prefeitura',num:16, sistema:'Sistema de Assistência Social',                     instalacao:'Pendente',migracao:'Pendente',homologacao:'Pendente',golive:'Pendente',status:'Pendente'},
+  {orgao:'Prefeitura',num:17, sistema:'Sistema de Gestão de Obras Públicas',               instalacao:'Pendente',migracao:'Pendente',homologacao:'Pendente',golive:'Pendente',status:'Pendente'},
+  {orgao:'Prefeitura',num:18, sistema:'Portal da Transparência',                           instalacao:'Pendente',migracao:'Pendente',homologacao:'Pendente',golive:'Pendente',status:'Pendente'},
+  {orgao:'Prefeitura',num:19, sistema:'Portal do Cidadão',                                 instalacao:'Pendente',migracao:'Pendente',homologacao:'Pendente',golive:'Pendente',status:'Pendente'},
+  {orgao:'Prefeitura',num:20, sistema:'Portal do Servidor',                                instalacao:'Pendente',migracao:'Pendente',homologacao:'Pendente',golive:'Pendente',status:'Pendente'},
+  {orgao:'Prefeitura',num:21, sistema:'Portal do Gestor (B.I.)',                           instalacao:'Pendente',migracao:'Pendente',homologacao:'Pendente',golive:'Pendente',status:'Pendente'},
+  {orgao:'Prefeitura',num:22, sistema:'Técnico Residente (Suporte Presencial)',            instalacao:'Pendente',migracao:'Pendente',homologacao:'Pendente',golive:'Pendente',status:'Pendente'},
+  // CÂMARA
+  {orgao:'Câmara',num:1, sistema:'Sistema de Contabilidade Pública',           instalacao:'Pendente',migracao:'Pendente',homologacao:'Pendente',golive:'Pendente',status:'Pendente'},
+  {orgao:'Câmara',num:2, sistema:'Sistema de Tesouraria',                       instalacao:'Pendente',migracao:'Pendente',homologacao:'Pendente',golive:'Pendente',status:'Pendente'},
+  {orgao:'Câmara',num:3, sistema:'Sistema de Folha de Pagamento e RH',         instalacao:'Pendente',migracao:'Pendente',homologacao:'Pendente',golive:'Pendente',status:'Pendente'},
+  {orgao:'Câmara',num:4, sistema:'Sistema de Contratação Pública',             instalacao:'Pendente',migracao:'Pendente',homologacao:'Pendente',golive:'Pendente',status:'Pendente'},
+  {orgao:'Câmara',num:5, sistema:'Sistema de Processos e Protocolo',           instalacao:'Pendente',migracao:'Pendente',homologacao:'Pendente',golive:'Pendente',status:'Pendente'},
+  {orgao:'Câmara',num:6, sistema:'Portal da Transparência (Câmara)',           instalacao:'Pendente',migracao:'Pendente',homologacao:'Pendente',golive:'Pendente',status:'Pendente'},
+  // IMPAS
+  {orgao:'IMPAS',num:1, sistema:'Sistema de Contabilidade Pública',   instalacao:'Pendente',migracao:'Pendente',homologacao:'Pendente',golive:'Pendente',status:'Pendente'},
+  {orgao:'IMPAS',num:2, sistema:'Sistema de Folha de Pagamento e RH', instalacao:'Pendente',migracao:'Pendente',homologacao:'Pendente',golive:'Pendente',status:'Pendente'},
+  {orgao:'IMPAS',num:3, sistema:'Sistema de Tesouraria',               instalacao:'Pendente',migracao:'Pendente',homologacao:'Pendente',golive:'Pendente',status:'Pendente'},
+  {orgao:'IMPAS',num:4, sistema:'Portal da Transparência (IMPAS)',     instalacao:'Pendente',migracao:'Pendente',homologacao:'Pendente',golive:'Pendente',status:'Pendente'},
+];
+ 
+const DEFAULT_MIGRACAO = [
+  {num:1, fase:'Fase 1 – Diagnóstico',  atividade:'Levantamento dos sistemas legados e mapeamento das estruturas de dados',   inicio:'',fim:'',responsavel:'Analista de Dados',    status:'Não Iniciado',obs:''},
+  {num:2, fase:'Fase 1 – Diagnóstico',  atividade:'Análise de qualidade e saneamento da base de dados legada',                inicio:'',fim:'',responsavel:'Analista de Dados',    status:'Não Iniciado',obs:''},
+  {num:3, fase:'Fase 2 – Extração',     atividade:'Extração dos dados cadastrais e históricos – Prefeitura',                  inicio:'',fim:'',responsavel:'Analista de Dados',    status:'Não Iniciado',obs:''},
+  {num:4, fase:'Fase 2 – Extração',     atividade:'Extração dos dados – Câmara Municipal',                                   inicio:'',fim:'',responsavel:'Analista de Dados',    status:'Não Iniciado',obs:''},
+  {num:5, fase:'Fase 2 – Extração',     atividade:'Extração dos dados – IMPAS',                                              inicio:'',fim:'',responsavel:'Analista de Dados',    status:'Não Iniciado',obs:''},
+  {num:6, fase:'Fase 3 – Conversão',    atividade:'Migração dados exercício atual – Prefeitura (todos os módulos)',           inicio:'',fim:'',responsavel:'Analista de Dados',    status:'Não Iniciado',obs:''},
+  {num:7, fase:'Fase 3 – Conversão',    atividade:'Migração dados exercícios anteriores – Prefeitura',                       inicio:'',fim:'',responsavel:'Analista de Dados',    status:'Não Iniciado',obs:''},
+  {num:8, fase:'Fase 3 – Conversão',    atividade:'Migração dados – Câmara Municipal',                                       inicio:'',fim:'',responsavel:'Analista de Dados',    status:'Não Iniciado',obs:''},
+  {num:9, fase:'Fase 3 – Conversão',    atividade:'Migração dados – IMPAS',                                                  inicio:'',fim:'',responsavel:'Analista de Dados',    status:'Não Iniciado',obs:''},
+  {num:10,fase:'Fase 4 – Validação',    atividade:'Conferência de integridade dos dados migrados – Prefeitura',              inicio:'',fim:'',responsavel:'Analista + Cliente',   status:'Não Iniciado',obs:''},
+  {num:11,fase:'Fase 4 – Validação',    atividade:'Conferência de integridade dos dados migrados – Câmara',                  inicio:'',fim:'',responsavel:'Analista + Cliente',   status:'Não Iniciado',obs:''},
+  {num:12,fase:'Fase 4 – Validação',    atividade:'Conferência de integridade dos dados migrados – IMPAS',                   inicio:'',fim:'',responsavel:'Analista + Cliente',   status:'Não Iniciado',obs:''},
+  {num:13,fase:'Fase 4 – Validação',    atividade:'Aprovação formal dos dados migrados pelo MUNICÍPIO',                      inicio:'',fim:'',responsavel:'Gestor do Projeto',    status:'Não Iniciado',obs:''},
+];
+ 
+const DEFAULT_KICKOFF_PAUTA = [
+  {num:1, topico:'Apresentação das equipes (Contratada e Município)',         responsavel:'Gestor do Projeto',   duracao:'15 min', decisao:'', pendencia:''},
+  {num:2, topico:'Apresentação do Sistema Supernova e escopo contratado',     responsavel:'Gestor do Projeto',   duracao:'20 min', decisao:'', pendencia:''},
+  {num:3, topico:'Apresentação do cronograma de implantação proposto',        responsavel:'Gestor do Projeto',   duracao:'20 min', decisao:'', pendencia:''},
+  {num:4, topico:'Definição de responsáveis e pontos focais do cliente',      responsavel:'Ambas as partes',     duracao:'15 min', decisao:'', pendencia:''},
+  {num:5, topico:'Mapeamento dos sistemas legados e situação dos dados',      responsavel:'Analista de Dados',   duracao:'20 min', decisao:'', pendencia:''},
+  {num:6, topico:'Infraestrutura disponível e requisitos técnicos',           responsavel:'Técnico Residente',   duracao:'15 min', decisao:'', pendencia:''},
+  {num:7, topico:'Plano de treinamento – datas, locais e público-alvo',       responsavel:'Instrutor',           duracao:'10 min', decisao:'', pendencia:''},
+  {num:8, topico:'Canais de comunicação e escalada de problemas',             responsavel:'Gestor do Projeto',   duracao:'10 min', decisao:'', pendencia:''},
+  {num:9, topico:'Definição dos marcos (milestones) e critérios de aceite',   responsavel:'Ambas as partes',     duracao:'15 min', decisao:'', pendencia:''},
+  {num:10,topico:'Próximos passos e encerramento',                            responsavel:'Gestor do Projeto',   duracao:'10 min', decisao:'', pendencia:''},
+];
+ 
+// ═══════════════════════════════════════════════
+// LOAD DATA
+// ═══════════════════════════════════════════════
+async function loadAllData() {
+  if (!db) { loadLocalData(); return; }
+  // Seed if empty
+  await seedIfEmpty('cronograma',  DEFAULT_CRONOGRAMA);
+  await seedIfEmpty('atividades',  DEFAULT_CRONOGRAMA.map(r=>({...r,inicioReal:'',fimReal:'',duracaoReal:'',pct:'0%',obs:''})));
+  await seedIfEmpty('sistemas',    DEFAULT_SISTEMAS);
+  await seedIfEmpty('migracao',    DEFAULT_MIGRACAO);
+  await seedIfEmpty('kickoff',     DEFAULT_KICKOFF_PAUTA);
+ 
+  loadCronograma();
+  loadAtividades();
+  loadSistemas();
+  loadMigracao();
+  loadKickoff();
+  loadDashboard();
+}
+ 
+function loadLocalData() {
+  renderCronograma(DEFAULT_CRONOGRAMA);
+  renderAtividades(DEFAULT_CRONOGRAMA.map(r=>({...r,inicioReal:'',fimReal:'',duracaoReal:'',pct:'0%',obs:''})));
+  renderSistemas(DEFAULT_SISTEMAS);
+  renderMigracao(DEFAULT_MIGRACAO);
+  renderKickoff(DEFAULT_KICKOFF_PAUTA);
+  calcDashboard(DEFAULT_CRONOGRAMA);
+}
+ 
+async function seedIfEmpty(path, defaultData) {
+  const snap = await db.ref(path).once('value');
+  if (!snap.exists()) {
+    const obj = {};
+    defaultData.forEach((item, i) => { obj['item_' + i] = item; });
+    await db.ref(path).set(obj);
+  }
+}
+ 
+function loadCronograma() {
+  db.ref('cronograma').on('value', snap => {
+    const data = snap.val();
+    const arr = data ? Object.entries(data).map(([k,v])=>({...v,_key:k})) : [];
+    renderCronograma(arr);
+    calcDashboard(arr);
+  });
+}
+function loadAtividades() {
+  db.ref('atividades').on('value', snap => {
+    const data = snap.val();
+    const arr = data ? Object.entries(data).map(([k,v])=>({...v,_key:k})) : [];
+    renderAtividades(arr);
+  });
+}
+function loadSistemas() {
+  db.ref('sistemas').on('value', snap => {
+    const data = snap.val();
+    const arr = data ? Object.entries(data).map(([k,v])=>({...v,_key:k})) : [];
+    renderSistemas(arr);
+  });
+}
+function loadMigracao() {
+  db.ref('migracao').on('value', snap => {
+    const data = snap.val();
+    const arr = data ? Object.entries(data).map(([k,v])=>({...v,_key:k})) : [];
+    renderMigracao(arr);
+  });
+}
+function loadKickoff() {
+  db.ref('kickoff').on('value', snap => {
+    const data = snap.val();
+    const arr = data ? Object.entries(data).map(([k,v])=>({...v,_key:k})) : [];
+    renderKickoff(arr);
+  });
+  db.ref('kickoff_info').on('value', snap => {
+    const d = snap.val() || {};
+    renderKickoffInfo(d);
+  });
+}
+ 
+// ═══════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════
+function calcDashboard(arr) {
+  const total    = arr.length;
+  const done     = arr.filter(r=>r.status==='Concluído').length;
+  const prog     = arr.filter(r=>['Iniciado','Em Andamento'].includes(r.status)).length;
+  const pending  = arr.filter(r=>['Não Iniciado','A Realizar'].includes(r.status)).length;
+  const pct      = total ? Math.round((done/total)*100) : 0;
+ 
+  document.getElementById('statTotal').textContent    = total;
+  document.getElementById('statDone').textContent     = done;
+  document.getElementById('statDonePct').textContent  = pct+'% do total';
+  document.getElementById('statProgress').textContent = prog;
+  document.getElementById('statPending').textContent  = pending;
+  document.getElementById('progressPct').textContent  = pct+'%';
+  document.getElementById('progressFill').style.width = pct+'%';
+ 
+  document.getElementById('statSys').textContent    = DEFAULT_SISTEMAS.length;
+  document.getElementById('statGoLive').textContent = DEFAULT_SISTEMAS.filter(s=>s.golive==='Concluído').length;
+  document.getElementById('statMig').textContent    = DEFAULT_MIGRACAO.filter(m=>m.status==='Concluído').length;
+}
+ 
+function loadDashboard() {
+  db.ref('cronograma').once('value', snap => {
+    const data = snap.val();
+    const arr = data ? Object.values(data) : [];
+    calcDashboard(arr);
+  });
+}
+ 
+// ═══════════════════════════════════════════════
+// RENDERERS
+// ═══════════════════════════════════════════════
+function statusBadge(s) {
+  const cls = STATUS_BADGE[s] || 'badge-gray';
+  return `<span class="badge ${cls}">${s||'—'}</span>`;
+}
+ 
+function renderCronograma(arr) {
+  const tbody = document.getElementById('cronogramaBody');
+  tbody.innerHTML = arr.map(r=>`
+    <tr>
+      <td><strong>${r.id||'—'}</strong></td>
+      <td><span style="font-size:12px;color:var(--muted)">${r.etapa||'—'}</span></td>
+      <td>${r.atividade||'—'}</td>
+      <td>${r.responsavel||'—'}</td>
+      <td>${r.duracao||'—'} dias</td>
+      <td>${r.inicio||'—'}</td>
+      <td>${r.fim||'—'}</td>
+      <td>${statusBadge(r.status)}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick='openEdit("cronograma",${JSON.stringify(r)})'>✏️</button></td>
+    </tr>`).join('');
+}
+ 
+function renderAtividades(arr) {
+  const tbody = document.getElementById('atividadesBody');
+  tbody.innerHTML = arr.map(r=>`
+    <tr>
+      <td><strong>${r.id||'—'}</strong></td>
+      <td><span style="font-size:12px;color:var(--muted)">${r.etapa||'—'}</span></td>
+      <td>${r.atividade||'—'}</td>
+      <td>${r.responsavel||'—'}</td>
+      <td>${r.inicioReal||'—'}</td>
+      <td>${r.fimReal||'—'}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="progress-bar" style="width:80px">
+            <div class="progress-fill" style="width:${parseInt(r.pct)||0}%"></div>
+          </div>
+          <span style="font-size:12px">${r.pct||'0%'}</span>
+        </div>
+      </td>
+      <td>${statusBadge(r.status)}</td>
+      <td style="max-width:140px;font-size:12px;color:var(--muted)">${r.obs||'—'}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick='openEdit("atividades",${JSON.stringify(r)})'>✏️</button></td>
+    </tr>`).join('');
+}
+ 
+function phaseIcon(v) {
+  if(v==='Concluído') return '<span style="color:var(--green)">✅</span>';
+  if(v==='Em Andamento') return '<span style="color:var(--gold)">🔄</span>';
+  return '<span style="color:var(--muted)">⬜</span>';
+}
+ 
+let lastOrgao = '';
+function renderSistemas(arr) {
+  const tbody = document.getElementById('sistemasBody');
+  lastOrgao = '';
+  tbody.innerHTML = arr.map(r=>{
+    let header = '';
+    if(r.orgao !== lastOrgao) {
+      lastOrgao = r.orgao;
+      const emoji = r.orgao==='Prefeitura'?'🏛️':r.orgao==='Câmara'?'🏛️':'🏥';
+      header = `<tr><td colspan="9" class="section-org">${emoji} ${r.orgao} Municipal de Santa Luzia</td></tr>`;
+    }
+    return header+`<tr>
+      <td>${r.num}</td>
+      <td><span class="badge badge-blue" style="font-size:11px">${r.orgao}</span></td>
+      <td>${r.sistema||'—'}</td>
+      <td>${phaseIcon(r.instalacao)} ${r.instalacao||'Pendente'}</td>
+      <td>${phaseIcon(r.migracao)} ${r.migracao||'Pendente'}</td>
+      <td>${phaseIcon(r.homologacao)} ${r.homologacao||'Pendente'}</td>
+      <td>${phaseIcon(r.golive)} ${r.golive||'Pendente'}</td>
+      <td>${statusBadge(r.status||'Pendente')}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick='openEdit("sistemas",${JSON.stringify(r)})'>✏️</button></td>
+    </tr>`;
+  }).join('');
+}
+ 
+function renderMigracao(arr) {
+  const tbody = document.getElementById('migracaoBody');
+  let lastFase = '';
+  tbody.innerHTML = arr.map(r=>{
+    let header = '';
+    if(r.fase !== lastFase) {
+      lastFase = r.fase;
+      header = `<tr><td colspan="9" class="section-org">► ${r.fase}</td></tr>`;
+    }
+    return header+`<tr>
+      <td>${r.num}</td>
+      <td><span style="font-size:12px;color:var(--muted)">${r.fase||'—'}</span></td>
+      <td>${r.atividade||'—'}</td>
+      <td>${r.inicio||'—'}</td>
+      <td>${r.fim||'—'}</td>
+      <td>${r.responsavel||'—'}</td>
+      <td>${statusBadge(r.status)}</td>
+      <td style="max-width:140px;font-size:12px;color:var(--muted)">${r.obs||'—'}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick='openEdit("migracao",${JSON.stringify(r)})'>✏️</button></td>
+    </tr>`;
+  }).join('');
+}
+ 
+function renderKickoffInfo(d) {
+  document.getElementById('kickoffInfo').innerHTML = `
+    <div class="form-group">
+      <label>Data</label>
+      <input type="date" value="${d.data||''}" onchange="saveKickoffInfo('data',this.value)">
+    </div>
+    <div class="form-group">
+      <label>Horário</label>
+      <input type="time" value="${d.horario||''}" onchange="saveKickoffInfo('horario',this.value)">
+    </div>
+    <div class="form-group form-full">
+      <label>Local / Link</label>
+      <input type="text" value="${d.local||''}" placeholder="Sala de Reuniões / Google Meet" onchange="saveKickoffInfo('local',this.value)">
+    </div>
+    <div class="form-group">
+      <label>Participantes Contratada</label>
+      <input type="text" value="${d.partContratada||''}" onchange="saveKickoffInfo('partContratada',this.value)">
+    </div>
+    <div class="form-group">
+      <label>Participantes Santa Luzia</label>
+      <input type="text" value="${d.partMunicipio||''}" onchange="saveKickoffInfo('partMunicipio',this.value)">
+    </div>`;
+}
+ 
+function saveKickoffInfo(field, val) {
+  if(db) db.ref('kickoff_info/'+field).set(val);
+}
+ 
+function renderKickoff(arr) {
+  const tbody = document.getElementById('kickoffBody');
+  tbody.innerHTML = arr.map(r=>`
+    <tr>
+      <td>${r.num}</td>
+      <td>${r.topico||'—'}</td>
+      <td>${r.responsavel||'—'}</td>
+      <td>${r.duracao||'—'}</td>
+      <td style="color:var(--green)">${r.decisao||'—'}</td>
+      <td style="color:var(--gold)">${r.pendencia||'—'}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick='openEdit("kickoff",${JSON.stringify(r)})'>✏️</button></td>
+    </tr>`).join('');
+}
+ 
+// ═══════════════════════════════════════════════
+// MODALS
+// ═══════════════════════════════════════════════
+const FORMS = {
+  cronograma: (r={})=>`
+    <div class="form-grid">
+      <div class="form-group"><label>#</label><input id="f_id" value="${r.id||''}"></div>
+      <div class="form-group"><label>Etapa</label><input id="f_etapa" value="${r.etapa||''}"></div>
+      <div class="form-group form-full"><label>Atividade</label><input id="f_atividade" value="${r.atividade||''}"></div>
+      <div class="form-group"><label>Responsável</label><input id="f_responsavel" value="${r.responsavel||''}"></div>
+      <div class="form-group"><label>Duração (dias)</label><input id="f_duracao" type="number" value="${r.duracao||''}"></div>
+      <div class="form-group"><label>Início</label><input id="f_inicio" type="date" value="${r.inicio||''}"></div>
+      <div class="form-group"><label>Fim</label><input id="f_fim" type="date" value="${r.fim||''}"></div>
+      <div class="form-group"><label>Status</label><select id="f_status">${STATUS_OPTS.map(s=>`<option ${r.status===s?'selected':''}>${s}</option>`).join('')}</select></div>
+    </div>`,
+  atividades: (r={})=>`
+    <div class="form-grid">
+      <div class="form-group"><label>#</label><input id="f_id" value="${r.id||''}"></div>
+      <div class="form-group"><label>Etapa</label><input id="f_etapa" value="${r.etapa||''}"></div>
+      <div class="form-group form-full"><label>Atividade</label><input id="f_atividade" value="${r.atividade||''}"></div>
+      <div class="form-group"><label>Responsável</label><input id="f_responsavel" value="${r.responsavel||''}"></div>
+      <div class="form-group"><label>Início Real</label><input id="f_inicioReal" type="date" value="${r.inicioReal||''}"></div>
+      <div class="form-group"><label>Fim Real</label><input id="f_fimReal" type="date" value="${r.fimReal||''}"></div>
+      <div class="form-group"><label>% Concluído</label><input id="f_pct" value="${r.pct||'0%'}"></div>
+      <div class="form-group"><label>Status</label><select id="f_status">${STATUS_OPTS.map(s=>`<option ${r.status===s?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div class="form-group form-full"><label>Observações</label><textarea id="f_obs">${r.obs||''}</textarea></div>
+    </div>`,
+  sistemas: (r={})=>`
+    <div class="form-grid">
+      <div class="form-group"><label>Órgão</label><select id="f_orgao"><option ${r.orgao==='Prefeitura'?'selected':''}>Prefeitura</option><option ${r.orgao==='Câmara'?'selected':''}>Câmara</option><option ${r.orgao==='IMPAS'?'selected':''}>IMPAS</option></select></div>
+      <div class="form-group"><label>#</label><input id="f_num" type="number" value="${r.num||''}"></div>
+      <div class="form-group form-full"><label>Sistema / Módulo</label><input id="f_sistema" value="${r.sistema||''}"></div>
+      <div class="form-group"><label>Instalação</label><select id="f_instalacao">${['Pendente','Em Andamento','Concluído'].map(s=>`<option ${r.instalacao===s?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Migração</label><select id="f_migracao">${['Pendente','Em Andamento','Concluído'].map(s=>`<option ${r.migracao===s?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Homologação</label><select id="f_homologacao">${['Pendente','Em Andamento','Concluído'].map(s=>`<option ${r.homologacao===s?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Go-Live</label><select id="f_golive">${['Pendente','Em Andamento','Concluído'].map(s=>`<option ${r.golive===s?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Status Geral</label><select id="f_status">${['Pendente','Em Andamento','Concluído','Cancelado'].map(s=>`<option ${r.status===s?'selected':''}>${s}</option>`).join('')}</select></div>
+    </div>`,
+  migracao: (r={})=>`
+    <div class="form-grid">
+      <div class="form-group"><label>#</label><input id="f_num" type="number" value="${r.num||''}"></div>
+      <div class="form-group"><label>Fase</label><input id="f_fase" value="${r.fase||''}"></div>
+      <div class="form-group form-full"><label>Atividade</label><input id="f_atividade" value="${r.atividade||''}"></div>
+      <div class="form-group"><label>Início</label><input id="f_inicio" type="date" value="${r.inicio||''}"></div>
+      <div class="form-group"><label>Fim</label><input id="f_fim" type="date" value="${r.fim||''}"></div>
+      <div class="form-group"><label>Responsável</label><input id="f_responsavel" value="${r.responsavel||''}"></div>
+      <div class="form-group"><label>Status</label><select id="f_status">${STATUS_OPTS.map(s=>`<option ${r.status===s?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div class="form-group form-full"><label>Observações</label><textarea id="f_obs">${r.obs||''}</textarea></div>
+    </div>`,
+  kickoff: (r={})=>`
+    <div class="form-grid">
+      <div class="form-group"><label>#</label><input id="f_num" type="number" value="${r.num||''}"></div>
+      <div class="form-group"><label>Duração</label><input id="f_duracao" value="${r.duracao||''}"></div>
+      <div class="form-group form-full"><label>Tópico</label><input id="f_topico" value="${r.topico||''}"></div>
+      <div class="form-group"><label>Responsável</label><input id="f_responsavel" value="${r.responsavel||''}"></div>
+      <div class="form-group form-full"><label>Decisão / Resultado</label><textarea id="f_decisao">${r.decisao||''}</textarea></div>
+      <div class="form-group form-full"><label>Pendência</label><textarea id="f_pendencia">${r.pendencia||''}</textarea></div>
+    </div>`,
+};
+ 
+const READERS = {
+  cronograma: ()=>({id:v('f_id'),etapa:v('f_etapa'),atividade:v('f_atividade'),responsavel:v('f_responsavel'),duracao:v('f_duracao'),inicio:v('f_inicio'),fim:v('f_fim'),status:v('f_status')}),
+  atividades: ()=>({id:v('f_id'),etapa:v('f_etapa'),atividade:v('f_atividade'),responsavel:v('f_responsavel'),inicioReal:v('f_inicioReal'),fimReal:v('f_fimReal'),pct:v('f_pct'),status:v('f_status'),obs:v('f_obs')}),
+  sistemas:   ()=>({orgao:v('f_orgao'),num:v('f_num'),sistema:v('f_sistema'),instalacao:v('f_instalacao'),migracao:v('f_migracao'),homologacao:v('f_homologacao'),golive:v('f_golive'),status:v('f_status')}),
+  migracao:   ()=>({num:v('f_num'),fase:v('f_fase'),atividade:v('f_atividade'),inicio:v('f_inicio'),fim:v('f_fim'),responsavel:v('f_responsavel'),status:v('f_status'),obs:v('f_obs')}),
+  kickoff:    ()=>({num:v('f_num'),topico:v('f_topico'),responsavel:v('f_responsavel'),duracao:v('f_duracao'),decisao:v('f_decisao'),pendencia:v('f_pendencia')}),
+};
+function v(id) { const el=document.getElementById(id); return el?el.value:''; }
+ 
+function openEdit(collection, record) {
+  editingKey        = record._key || null;
+  editingCollection = collection;
+  document.getElementById('modalTitle').textContent = '✏️ Editar Registro';
+  document.getElementById('modalBody').innerHTML    = FORMS[collection](record);
+  document.getElementById('btnDelete').style.display = editingKey ? 'inline-flex' : 'none';
+  document.getElementById('modalOverlay').classList.add('open');
+}
+ 
+function openAddModal(col) {
+  editingKey        = null;
+  editingCollection = col || currentView;
+  document.getElementById('modalTitle').textContent = '+ Novo Registro';
+  document.getElementById('modalBody').innerHTML    = FORMS[editingCollection]({});
+  document.getElementById('btnDelete').style.display = 'none';
+  document.getElementById('modalOverlay').classList.add('open');
+}
+ 
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
+function closeModalOutside(e) { if(e.target.id==='modalOverlay') closeModal(); }
+ 
+async function saveRecord() {
+  const data = READERS[editingCollection]();
+  if(db) {
+    if(editingKey) {
+      await db.ref(editingCollection+'/'+editingKey).update(data);
+    } else {
+      await db.ref(editingCollection).push(data);
+    }
+    toast('Salvo no Firebase!', 'success');
+  } else {
+    toast('Firebase não conectado. Configure nas Configurações.', 'error');
+  }
+  closeModal();
+}
+ 
+async function deleteRecord() {
+  if(!editingKey || !db) { toast('Não foi possível excluir.','error'); return; }
+  if(!confirm('Excluir este registro?')) return;
+  await db.ref(editingCollection+'/'+editingKey).remove();
+  toast('Registro excluído.', 'info');
+  closeModal();
+}
+ 
+// ═══════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════
+const VIEW_TITLES = {
+  dashboard:'🏠 Visão Geral', cronograma:'📅 Cronograma Geral',
+  atividades:'✅ Controle de Atividades', sistemas:'🖥️ Sistemas por Órgão',
+  migracao:'🗄️ Migração de Dados', kickoff:'🚀 Reunião Kickoff',
+  sla:'🛡️ Suporte & SLA', config:'⚙️ Configurações',
+};
+ 
+function showView(name) {
+  currentView = name;
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.querySelectorAll(`[data-view="${name}"]`).forEach(n=>n.classList.add('active'));
+  document.getElementById('topbarTitle').textContent = VIEW_TITLES[name];
+  const addBtn = document.getElementById('btnAdd');
+  addBtn.style.display = ['cronograma','atividades','migracao','kickoff'].includes(name)?'inline-flex':'none';
+}
+ 
+// ═══════════════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════════════
+async function exportData() {
+  let data = {};
+  if(db) {
+    const snap = await db.ref('/').once('value');
+    data = snap.val() || {};
+  } else {
+    data = { cronograma: DEFAULT_CRONOGRAMA, sistemas: DEFAULT_SISTEMAS, migracao: DEFAULT_MIGRACAO };
+  }
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'supernova_dados_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click(); URL.revokeObjectURL(url);
+  toast('Dados exportados!', 'success');
+}
+ 
+// ═══════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════
+function toast(msg, type='info') {
+  const icons = {success:'✅', error:'❌', info:'ℹ️'};
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span>${icons[type]}</span> ${msg}`;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(()=>el.remove(), 3500);
+}
+ 
+// ═══════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', ()=>{
+  loadConfigToForm();
+  initFirebaseAndLoad();
+  // fallback: show dashboard data even without Firebase
+  calcDashboard(DEFAULT_CRONOGRAMA);
+});
+</script>
+</body>
+</html>
+ 
