@@ -1336,13 +1336,37 @@ function toast(msg, type='info') {
 // ═══════════════════════════════════════════════
 // BOOT
 // ═══════════════════════════════════════════════
-window.addEventListener('DOMContentLoaded', ()=>{
+async function initFirebaseAndLoad() {
+  const config = getFirebaseConfig();
+  
+  // Tenta inicializar o Firebase
+  const success = initFirebase(config);
+  
+  if (success) {
+    try {
+      // Tenta carregar dados do Firebase com um tempo limite de 3 segundos
+      await Promise.race([
+        loadData(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
+      ]);
+      updateStatus(true);
+      console.log("Firebase conectado e dados carregados.");
+      return; 
+    } catch (e) {
+      console.warn("Firebase falhou ao responder, usando dados padrão...");
+    }
+  }
+
+  // Se o Firebase falhar ou não estiver configurado, carrega os dados padrão do Excel
+  console.log("Modo Offline: Carregando DEFAULT_DATA");
+  cronograma = JSON.parse(JSON.stringify(DEFAULT_CRONOGRAMA));
+  sistemas   = JSON.parse(JSON.stringify(DEFAULT_SISTEMAS));
+  migracao   = JSON.parse(JSON.stringify(DEFAULT_MIGRACAO));
+  updateStatus(false);
+  renderAll();
+}
+
+window.addEventListener('DOMContentLoaded', () => {
   loadConfigToForm();
   initFirebaseAndLoad();
-  // fallback: show dashboard data even without Firebase
-  calcDashboard(DEFAULT_CRONOGRAMA);
 });
-</script>
-</body>
-</html>
- 
