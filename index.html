@@ -717,22 +717,23 @@ const STATUS_BADGE = {
 // FIREBASE INIT
 // ═══════════════════════════════════════════════
 function getFirebaseConfig() {
-  // Tentamos carregar do localStorage primeiro
   const saved = localStorage.getItem('fb_config');
-  if (saved) {
-    return JSON.parse(saved);
+  const cfg = saved ? JSON.parse(saved) : {};
+
+  // Se o que estiver salvo não tiver API Key, ele força o uso dos valores do HTML
+  if (!cfg.apiKey) {
+    return {
+      apiKey:            document.getElementById('cfg_apiKey').value,
+      authDomain:        document.getElementById('cfg_authDomain').value,
+      dbURL:             document.getElementById('cfg_dbURL').value,
+      projectId:         document.getElementById('cfg_projectId').value,
+      storageBucket:     document.getElementById('cfg_storageBucket').value,
+      messagingSenderId: document.getElementById('cfg_messagingSenderId').value,
+      appId:             document.getElementById('cfg_appId').value
+    };
   }
   
-  // SE NÃO HOUVER NADA SALVO, ele pega os valores que você definiu nos inputs HTML
-  return {
-    apiKey:            document.getElementById('cfg_apiKey').value,
-    authDomain:        document.getElementById('cfg_authDomain').value,
-    dbURL:             document.getElementById('cfg_dbURL').value,
-    projectId:         document.getElementById('cfg_projectId').value,
-    storageBucket:     document.getElementById('cfg_storageBucket').value,
-    messagingSenderId: document.getElementById('cfg_messagingSenderId').value,
-    appId:             document.getElementById('cfg_appId').value
-  };
+  return cfg;
 }
  
 function initFirebase(cfg) {
