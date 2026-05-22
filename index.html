@@ -622,12 +622,11 @@
       <div class="table-card" style="max-width:640px">
         <div class="table-header"><h3>⚙️ Configuração do Firebase</h3></div>
         <div style="padding:24px">
-          <div class="config-notice" style="margin-bottom:24px">
-            <strong>📌 Como configurar:</strong><br><br>
-            1. Acesse <code>console.firebase.google.com</code><br>
-            2. Crie um projeto → Realtime Database → Criar banco de dados (modo teste)<br>
-            3. Vá em Configurações do Projeto → Seus apps → Web → Copie o firebaseConfig<br>
-            4. Cole os valores abaixo e clique em Salvar
+          <div class="config-notice" style="margin-bottom:24px;background:rgba(16,185,129,.08);border-color:rgba(16,185,129,.3)">
+            <strong style="color:var(--green)">✅ Banco de dados configurado automaticamente!</strong><br><br>
+            O sistema já está conectado ao banco <code>implantacaosl-49faa-default-rtdb</code>.<br>
+            Os campos abaixo são preenchidos automaticamente. Você só precisa alterá-los
+            se quiser usar um banco diferente.
           </div>
           <div style="display:grid;gap:16px">
             <div class="form-group">
@@ -636,15 +635,15 @@
             </div>
             <div class="form-group">
               <label>Auth Domain</label>
-              <input type="text" id="cfg_authDomain" placeholder="meu-projeto.firebaseapp.com">
+              <input type="text" id="cfg_authDomain" value="implantacaosl-49faa.firebaseapp.com" placeholder="meu-projeto.firebaseapp.com">
             </div>
             <div class="form-group">
               <label>Database URL</label>
-              <input type="text" id="cfg_dbURL" value="https://implantacaosl-49faa-default-rtdb.firebaseio.com/">
+              <input type="text" id="cfg_dbURL" value="https://implantacaosl-49faa-default-rtdb.firebaseio.com/" placeholder="https://meu-projeto-default-rtdb.firebaseio.com">
             </div>
             <div class="form-group">
               <label>Project ID</label>
-              <input type="text" id="cfg_projectId" placeholder="meu-projeto">
+              <input type="text" id="cfg_projectId" value="implantacaosl-49faa" placeholder="meu-projeto">
             </div>
             <div class="form-group">
               <label>App ID</label>
@@ -716,56 +715,58 @@ const STATUS_BADGE = {
 // ═══════════════════════════════════════════════
 // FIREBASE INIT
 // ═══════════════════════════════════════════════
-function getFirebaseConfig() {
-  const saved = localStorage.getItem('fb_config');
-  const cfg = saved ? JSON.parse(saved) : {};
+// Configuração padrão – banco ImplantacaoSL (conecta automaticamente ao abrir)
+const DEFAULT_FIREBASE_CONFIG = {
+  databaseURL: 'https://implantacaosl-49faa-default-rtdb.firebaseio.com/',
+  projectId:   'implantacaosl-49faa',
+  authDomain:  'implantacaosl-49faa.firebaseapp.com',
+};
 
-  // Se o que estiver salvo não tiver API Key, ele força o uso dos valores do HTML
-  if (!cfg.apiKey) {
-    return {
-      apiKey:            document.getElementById('cfg_apiKey').value,
-      authDomain:        document.getElementById('cfg_authDomain').value,
-      dbURL:             document.getElementById('cfg_dbURL').value,
-      projectId:         document.getElementById('cfg_projectId').value,
-      storageBucket:     document.getElementById('cfg_storageBucket').value,
-      messagingSenderId: document.getElementById('cfg_messagingSenderId').value,
-      appId:             document.getElementById('cfg_appId').value
-    };
-  }
-  
-  return cfg;
+function getFirebaseConfig() {
+  // Prioridade: config salva pelo usuário → config padrão hardcoded
+  try {
+    const saved = JSON.parse(localStorage.getItem('fbConfig') || 'null');
+    if (saved && saved.databaseURL) return saved;
+  } catch { /* ignora */ }
+  return DEFAULT_FIREBASE_CONFIG;
 }
- 
+
 function initFirebase(cfg) {
   try {
-    if (firebase.apps.length) firebase.apps[0].delete();
-    const app = firebase.initializeApp(cfg);
+    firebase.apps.slice().forEach(app => { try { app.delete(); } catch(e){} });
+    const firebaseCfg = { databaseURL: cfg.databaseURL };
+    if (cfg.apiKey)     firebaseCfg.apiKey     = cfg.apiKey;
+    if (cfg.authDomain) firebaseCfg.authDomain  = cfg.authDomain;
+    if (cfg.projectId)  firebaseCfg.projectId   = cfg.projectId;
+    if (cfg.appId)      firebaseCfg.appId        = cfg.appId;
+    const app = firebase.initializeApp(firebaseCfg);
     db = firebase.database(app);
     return true;
   } catch(e) {
-    console.error(e);
+    console.error('Firebase init error:', e);
     return false;
   }
 }
- 
+
 function initFirebaseAndLoad() {
   const cfg = getFirebaseConfig();
-  if (!cfg || !cfg.databaseURL) {
-    setConn(false, 'Sem configuração');
-    document.getElementById('configAlert').style.display = 'block';
-    document.getElementById('cfgStatus').innerHTML = '<span style="color:var(--red)">❌ Nenhuma configuração salva. Preencha os campos acima.</span>';
-    loadLocalData();
-    return;
-  }
   document.getElementById('configAlert').style.display = 'none';
+  setConn(null, 'Conectando...');
   if (initFirebase(cfg)) {
-    setConn(true, 'Firebase conectado');
-    toast('Firebase conectado com sucesso!', 'success');
-    document.getElementById('cfgStatus').innerHTML = '<span style="color:var(--green)">✅ Conectado!</span>';
+    db.ref('.info/connected').on('value', snap => {
+      if (snap.val() === true) {
+        setConn(true, 'Firebase conectado');
+        document.getElementById('cfgStatus').innerHTML =
+          '<span style="color:var(--green)">✅ Conectado ao banco implantacaosl-49faa!</span>';
+      } else {
+        setConn(false, 'Aguardando conexão');
+      }
+    });
     loadAllData();
   } else {
     setConn(false, 'Erro de conexão');
-    document.getElementById('cfgStatus').innerHTML = '<span style="color:var(--red)">❌ Erro ao conectar. Verifique as credenciais.</span>';
+    document.getElementById('cfgStatus').innerHTML =
+      '<span style="color:var(--red)">❌ Erro ao conectar. Verifique as credenciais.</span>';
     loadLocalData();
   }
 }
@@ -773,7 +774,9 @@ function initFirebaseAndLoad() {
 function setConn(ok, msg) {
   const dot = document.getElementById('connDot');
   const status = document.getElementById('connStatus');
-  dot.style.background = ok ? 'var(--green)' : 'var(--red)';
+  if (ok === null)       dot.style.background = 'var(--gold)';  // conectando
+  else if (ok === true)  dot.style.background = 'var(--green)'; // conectado
+  else                   dot.style.background = 'var(--red)';   // erro
   status.textContent = msg;
 }
  
@@ -795,13 +798,12 @@ function saveFirebaseConfig() {
 }
  
 function loadConfigToForm() {
-  const cfg = getFirebaseConfig();
-  if (!cfg) return;
-  document.getElementById('cfg_apiKey').value    = cfg.apiKey    || '';
-  document.getElementById('cfg_authDomain').value= cfg.authDomain|| '';
-  document.getElementById('cfg_dbURL').value     = cfg.databaseURL||'';
-  document.getElementById('cfg_projectId').value = cfg.projectId || '';
-  document.getElementById('cfg_appId').value     = cfg.appId     || '';
+  const cfg = getFirebaseConfig(); // retorna sempre pelo menos o DEFAULT
+  document.getElementById('cfg_apiKey').value    = cfg.apiKey     || '';
+  document.getElementById('cfg_authDomain').value= cfg.authDomain || '';
+  document.getElementById('cfg_dbURL').value     = cfg.databaseURL|| '';
+  document.getElementById('cfg_projectId').value = cfg.projectId  || '';
+  document.getElementById('cfg_appId').value     = cfg.appId      || '';
 }
  
 // ═══════════════════════════════════════════════
@@ -1336,37 +1338,13 @@ function toast(msg, type='info') {
 // ═══════════════════════════════════════════════
 // BOOT
 // ═══════════════════════════════════════════════
-async function initFirebaseAndLoad() {
-  const config = getFirebaseConfig();
-  
-  // Tenta inicializar o Firebase
-  const success = initFirebase(config);
-  
-  if (success) {
-    try {
-      // Tenta carregar dados do Firebase com um tempo limite de 3 segundos
-      await Promise.race([
-        loadData(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
-      ]);
-      updateStatus(true);
-      console.log("Firebase conectado e dados carregados.");
-      return; 
-    } catch (e) {
-      console.warn("Firebase falhou ao responder, usando dados padrão...");
-    }
-  }
-
-  // Se o Firebase falhar ou não estiver configurado, carrega os dados padrão do Excel
-  console.log("Modo Offline: Carregando DEFAULT_DATA");
-  cronograma = JSON.parse(JSON.stringify(DEFAULT_CRONOGRAMA));
-  sistemas   = JSON.parse(JSON.stringify(DEFAULT_SISTEMAS));
-  migracao   = JSON.parse(JSON.stringify(DEFAULT_MIGRACAO));
-  updateStatus(false);
-  renderAll();
-}
-
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', ()=>{
   loadConfigToForm();
   initFirebaseAndLoad();
+  // fallback: show dashboard data even without Firebase
+  calcDashboard(DEFAULT_CRONOGRAMA);
 });
+</script>
+</body>
+</html>
+ 
